@@ -82,10 +82,3 @@ def navigate():
 
     return FILE_SELECTED
 
-        
-
-            
-endResult=navigate()
-print(endResult)
-
-
