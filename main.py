@@ -1,6 +1,7 @@
 from colorama import Fore,Back,init
 import json
 import random
+from tags import getTags
 from datetime import datetime
 
 init(autoreset=True)
@@ -44,5 +45,6 @@ author=random_quote["author"]
 print(f"{quote}")
 print(f"~{author}")
 
-
+tags=getTags()
+print (f"The tags extracted are : {tags}")
 
