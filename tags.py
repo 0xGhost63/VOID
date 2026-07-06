@@ -2,7 +2,7 @@ subjects = ["DLD","DSA","CALCULUS"]
 
 tags= {
     "subject": subjects,
-    "document_type": ["Assignment","Quiz","Notes"],
+    "document_type": ["Assignment","Quiz","Notes","Misc."],
     "number":[1,2,3,4],
     "topic": "string"
 }

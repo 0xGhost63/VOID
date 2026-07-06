@@ -7,6 +7,7 @@ import pyperclip
 init(autoreset=True)
 location="/home/sannan/Documents/3rd Sem/Test.pdf"
 
+
 choice=input("Would you like to view the content of the PDF/WORD file ? >> : ")
 choice=choice.strip().lower()
 if choice=="yes":
