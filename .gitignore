@@ -1,2 +1,9 @@
-.env
 void/
+.env
+__pycache__/
+*.py[cod]
+*$py.class
+env/
+.vscode/
+.DS_Store
+Thumbs.db

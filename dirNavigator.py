@@ -78,6 +78,7 @@ def navigate():
             FILE_SELECTED=f"{os.getcwd()}/{files_list[slected_file]}"
 
             print(f"{Fore.RED}You seleceted {FILE_SELECTED}")
+            break
             
 
     return FILE_SELECTED

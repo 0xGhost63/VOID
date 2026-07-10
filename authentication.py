@@ -1,3 +1,4 @@
+from tqdm import trange
 import sys
 from supabase import create_client, ClientOptions
 from dotenv import load_dotenv
@@ -11,7 +12,7 @@ load_dotenv()
 init(autoreset=True)
 SUPABASE_URL = os.getenv("PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_PUBLISHABLE_KEY")
-
+UUID = ""
 IS_LEGIT=False
 
 def is_user_valid_huh(IS_LEGIT):
@@ -31,7 +32,8 @@ try:
 except Exception as e:
     print(f"Error : {e}")
 
-def login ():   
+def login():
+    global IS_LEGIT, UUID
     identifier=input(f"{Fore.CYAN}Enter username/email : ")
     password=input(f"{Fore.CYAN}Enter your password : ")
     email=identifier
@@ -47,8 +49,14 @@ def login ():
             "email": email,
             "password": password
         })
+
+        for _ in trange(4, desc=f"Logging you in {Fore.GREEN}", bar_format="{desc}: {bar}"):
+            time.sleep(0.3)
+
         print(f"{Fore.GREEN}Login successful!")
-        IS_LEGIT=False
+        UUID = response.user.id
+        IS_LEGIT = True
+        return UUID
     except Exception as e:
         print(f"{Fore.RED}{Back.BLACK}Login failed: {e}")
         print(f"{Fore.BLUE}Forgot Password ? Contact Admin.")
@@ -93,7 +101,7 @@ def register():
 
         print(f"{Fore.GREEN}Registration successful! Please check your email ({email}) to confirm your account.")
         print(f"{Fore.RED}{Back.BLACK}Plz check the spam folder in case of email is not found (or use a non-edu account)!")
-        time.sleep()
+        time.sleep(1)
         print(f"{Back.BLACK}{Fore.GREEN}Thanks for signing up..Login with your creds now :)")
         login()
     except Exception as e:
