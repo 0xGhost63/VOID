@@ -1,0 +1,1 @@
+- Add seprate modules for the supabase operations for maintainability
