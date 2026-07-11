@@ -34,8 +34,13 @@ except Exception as e:
 
 def login():
     global IS_LEGIT, UUID
-    identifier=input(f"{Fore.CYAN}Enter username/email : ")
-    password=input(f"{Fore.CYAN}Enter your password : ")
+    # identifier=input(f"{Fore.CYAN}Enter username/email : ")
+    # password=input(f"{Fore.CYAN}Enter your password : ")
+
+    ##FOR TESTING
+    identifier="0xghost"
+    password="123456"
+
     email=identifier
 
     if "@" not in identifier:
