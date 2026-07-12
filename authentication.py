@@ -1,3 +1,7 @@
+#### UNCOMMENT THE :
+## INPUT PART
+## LOADING PART
+
 from tqdm import trange
 import sys
 from supabase import create_client, ClientOptions
@@ -34,12 +38,12 @@ except Exception as e:
 
 def login():
     global IS_LEGIT, UUID
-    # identifier=input(f"{Fore.CYAN}Enter username/email : ")
-    # password=input(f"{Fore.CYAN}Enter your password : ")
+    identifier=input(f"{Fore.CYAN}Enter username/email : ")
+    password=input(f"{Fore.CYAN}Enter your password : ")
 
     ##FOR TESTING
-    identifier="0xghost"
-    password="123456"
+    # identifier="0xghost"
+    # password="123456"
 
     email=identifier
 
@@ -55,8 +59,8 @@ def login():
             "password": password
         })
 
-        for _ in trange(4, desc=f"Logging you in {Fore.GREEN}", bar_format="{desc}: {bar}"):
-            time.sleep(0.3)
+        # for _ in trange(4, desc=f"Logging you in {Fore.GREEN}", bar_format="{desc}: {bar}"):
+        #     time.sleep(0.3)
 
         print(f"{Fore.GREEN}Login successful!")
         UUID = response.user.id
@@ -73,10 +77,6 @@ def register():
     password = (input(f"{Fore.CYAN}Enter your password : ")).strip()
     re_enter = (input(f"{Fore.CYAN}Confirm your password : ")).strip()
 
-    # email="0xghost63@gmail.com"
-    # username="0xghost"
-    # password="123456"
-    # re_enter="123456"
 
     while(password!=re_enter):
         print(f"{Fore.RED + Back.BLACK}Error ! Password & Confirm Password doesn't match !")

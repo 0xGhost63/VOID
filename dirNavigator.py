@@ -79,6 +79,10 @@ def navigate():
 
             print(f"{Fore.RED}You seleceted {FILE_SELECTED}")
             break
+        
+        ## EXITING
+        if selected_index == 4:
+            print(f"{Fore.RED}You selected {commands[slected_file]}")
             
 
     return FILE_SELECTED

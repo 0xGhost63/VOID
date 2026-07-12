@@ -2,7 +2,7 @@ import os
 import time
 import base64
 import requests
-import fitz  # PyMuPDF — pip install pymupdf
+import fitz  
 from dotenv import load_dotenv
 from colorama import init, Fore, Back
 import subjects
@@ -39,56 +39,68 @@ def summarise(file_location: str) -> str:
 
     def build_prompt(pdf_text: str) -> str:
         subject_list = subjects.getSub()
-        return f"""You are an expert information extraction assistant specialized in university academic documents. Your goal is to analyze the first page text of an academic document and extract the subject, assessment type/number, and a razor-sharp summary.
-
-CRITICAL INSTRUCTION: The input document can be an Assignment, a Quiz, Lecture Notes, or a Textbook chapter/excerpt. You must dynamically adapt your logic based on the text indicators.
-
-STEP 1 — IDENTIFY THE TYPE AND NUMBER / REFERENCE:
-Analyze the header and metadata lines to determine what type of document this is and its numerical identifier:
-1. ASSIGNMENTS / LABS: Look for "Assignment #", "Lab #", "Assignment No", or "Lab Task". Extract the number. If "Lab" is explicitly mentioned anywhere near the assignment label, mark it as "Lab [Number]". Otherwise, default it to "Theory [Number]" (e.g., "Assignment # 02" becomes "Theory 02").
-2. QUIZZES: Look for "Quiz #", "Quiz No", or "Class Test". Extract the number and mark it as "Quiz [Number]" (e.g., "Quiz 03").
-3. LECTURE NOTES / SLIDES: Look for keywords like "Lecture #", "Week #", "Slide", "Topic", or "Handout". Extract the number/week if present and mark it as "Notes [Number/Week]" (e.g., "Notes 05" or "Notes Week 04"). If no number is found, use "Notes".
-4. BOOKS / TEXTBOOKS: Look for "Chapter #", "Ch #", "Section", or textbook title patterns. Extract the chapter number and mark it as "Book Ch [Number]" (e.g., "Book Ch 04"). If it's a general book excerpt without a clear chapter, use "Book".
-
-If absolutely no type or number can be inferred from the context, leave this field completely blank.
-
-STEP 2 — MAP THE SUBJECT:
-Look for indicators like "Course:", "Subject:", "Class:", or department codes (e.g., CSC-211, hum-102). 
-Match that detected course name or code to the closest abbreviation/entry in this authorized subject list: {subject_list}
-- Use advanced semantic judgment to map full or partial names to their common abbreviations in the list (e.g., "Data Structures and Algorithms" or "CSC-211" -> "DSA"; "Object Oriented Programming" -> "OOP"; "Digital Logic Design" -> "DLD"; "Linear Algebra" -> "LA").
-- If the subject list contains a literal matching abbreviation, prioritize it.
-- Only leave this field completely blank if there is absolutely no subject name, code, or context clue available.
-
-STEP 3 — GENERATE THE SUMMARY:
-Synthesize the primary focus of the document into a single, high-density phrase.
-- Max limit: 7-8 words.
-- For Assignments/Quizzes: Describe what the task implements, solves, or tests (e.g., "Implements event registration using linked lists").
-- For Notes/Books: Describe the core theoretical concept or topic covered (e.g., "Explains memory management and paging mechanisms").
-
-OUTPUT FORMAT:
-Return ONLY plain text. Absolutely NO markdown formatting, NO backticks, NO quotes, NO conversational filler, and NO reasoning process. Output exactly one line matching this schema:
-
-SUBJECT : TYPE NUMBER : SUMMARY
-
-Rules for separators:
-- Keep both ":" characters exactly as shown, even if a field is entirely blank (e.g., "DSA : : Summary here" or " : Notes 02 : Summary here").
-
-EXAMPLES FOR DECISION MAKING:
-- Input: "Lab Assignment # 02... Course: Data Structures..." 
-  Output: DSA : Lab 02 : Implements event registration using linked lists
-- Input: "Quiz # 3... Subject: Object Oriented Programming..." 
-  Output: OOP : Quiz 03 : Tests polymorphism and inheritance concepts
-- Input: "Lecture 5: Memory Management... Operating Systems..." 
-  Output: OS : Notes 05 : Explains paging and virtual memory allocation
-- Input: "Chapter 4: Vector Spaces... Linear Algebra Textbook..." 
-  Output: LA : Book Ch 04 : Covers vector spaces and subspaces properties
+        return f"""You are an expert at classifying university academic documents (assignment, quiz, notes, or book) and extracting a short summary.
 
 DOCUMENT TEXT (FIRST PAGE):
 \"\"\"
 {pdf_text}
 \"\"\"
 
-Now analyze and output the single structured line:"""
+AUTHORIZED SUBJECT LIST (closed set — you may ONLY output values from this exact list, copied character-for-character):
+{subject_list}
+
+Follow these steps in order.
+
+STEP 1 — DETERMINE SUBJECT (MANDATORY — NEVER BLANK, NEVER INVENTED):
+- Look for explicit signals first: "Course:", "Subject:", "Class:", a department code (e.g. CSC-211, HUM-102), or the subject name mentioned anywhere in the header/title.
+- Use semantic judgment to map that signal to the closest matching entry in the AUTHORIZED SUBJECT LIST (e.g. "Data Structures and Algorithms" / "CSC-211" -> "DSA"; "Object Oriented Programming" -> "OOP"; "Digital Logic Design" -> "DLD"; "Linear Algebra" -> "LA").
+- If there is NO explicit signal, infer the subject from the CONTENT ITSELF (code style, terminology, topic domain, syntax, formulas, diagrams etc.) and match that inferred domain to the closest entry in the list. Example: unlabeled code using nodes/pointers/traversal -> DSA. Unlabeled content about transistors/logic gates -> DLD.
+- You MUST always output the single closest matching entry from the AUTHORIZED SUBJECT LIST — copied EXACTLY as it appears there (same spelling, case, punctuation, abbreviation). Never paraphrase it, never invent a new abbreviation, never output a subject not present in the list.
+- There is no valid scenario where this field is blank. Even weak or indirect signals are enough to make a best-fit decision — you must always commit to the single closest match.
+
+STEP 2 — DETERMINE TYPE (MANDATORY — NEVER BLANK). Check in this priority order and stop at the first match:
+
+  a) ASSIGNMENT/LAB — text contains "Assignment #", "Assignment No", "Lab #", or "Lab Task".
+     - If "Lab" appears near the label -> "Lab [Number]"
+     - Otherwise -> "Theory Assignment [Number]"
+
+  b) QUIZ — text contains "Quiz #", "Quiz No", or "Class Test".
+     -> "Quiz [Number]"
+
+  c) BOOK — text contains "Chapter #", "Ch #", "Section #", or clear textbook title/formatting.
+     - If chapter number found -> "Book Ch [Number]"
+     - Otherwise -> "Book"
+
+  d) NOTES — MANDATORY FALLBACK. If none of a/b/c match, you MUST use this. This covers lecture slides, week/topic handouts, code snippets, short excerpts, or any text with no clear assignment/quiz/book label.
+     - If a lecture/week number is present -> "Notes [Number]"
+     - Otherwise -> "Notes"
+
+Every document matches one of a/b/c/d. There is no valid case where TYPE is blank.
+
+STEP 3 — SUMMARY (max 7-8 words, MANDATORY, never blank):
+- Assignments/Quizzes: what it implements/solves/tests.
+- Notes/Books: the core concept covered.
+
+OUTPUT — exactly one line, no markdown, no quotes, no extra commentary. ALL THREE FIELDS MUST BE FILLED — THIS IS THE HIGHEST PRIORITY RULE:
+SUBJECT : TYPE NUMBER : SUMMARY
+
+EXAMPLES:
+Input: "Lab Assignment # 02... Course: Data Structures..."
+Output: DSA : Lab 02 : Implements event registration using linked lists
+
+Input: "Quiz # 3... Subject: Object Oriented Programming..."
+Output: OOP : Quiz 03 : Tests polymorphism and inheritance concepts
+
+Input: "Lecture 5: Memory Management... Operating Systems..."
+Output: OS : Notes 05 : Explains paging and virtual memory allocation
+
+Input: "Chapter 4: Vector Spaces... Linear Algebra Textbook..."
+Output: LA : Book Ch 04 : Covers vector spaces and subspaces properties
+
+Input: a two-page excerpt with no header, just code + a short explanation of stack push/pop, no course mentioned
+Output: DSA : Notes : Explains stack push and pop implementation
+
+Now output the single structured line for the document above."""
 
     def extract_summary_line(text: str) -> str:
         lines = [l.strip() for l in text.strip().split("\n") if l.strip()]
@@ -187,22 +199,22 @@ Now analyze and output the single structured line:"""
                 last_error = e
                 if status == 429 and attempt < RETRY_ATTEMPTS:
                     print(
-                        f"{Fore.YELLOW}[!] {model} rate-limited, retrying in {RETRY_DELAY_SECONDS}s "
+                        f"{Fore.YELLOW}[!] Summarizer error, retrying in {RETRY_DELAY_SECONDS}s "
                         f"(attempt {attempt}/{RETRY_ATTEMPTS})..."
                     )
                     time.sleep(RETRY_DELAY_SECONDS)
                     continue
                 print(
-                    f"{Fore.YELLOW}[!] {model} failed ({e}), moving to next model..."
+                    f"{Fore.YELLOW}[!] Summarizer failed ({e}), moving to next fallback..."
                 )
                 break
             except Exception as e:
                 last_error = e
                 print(
-                    f"{Fore.YELLOW}[!] {model} failed ({e}), moving to next model..."
+                    f"{Fore.YELLOW}[!] Summarizerfailed ({e}), moving to fallback..."
                 )
                 break
 
     raise RuntimeError(
-        f"All models in fallback chain failed. Last error: {last_error}"
+        f"All summarizers in fallback chain failed :( Last error: {last_error}"
     )

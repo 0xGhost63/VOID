@@ -1,3 +1,4 @@
+import pyperclip
 from colorama import Fore,Back,init
 import json
 import random
@@ -9,8 +10,13 @@ import authentication as athu
 import dirNavigator
 import os
 import sys
+import socket
 from pdf_sumariser import summarise
 from subjects import getSub 
+import upload_file
+import selectSupabaseFiles
+from chat import chat_with_file
+
 
 init(autoreset=True)
 
@@ -19,11 +25,20 @@ formatted_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 def printLine():
     print(f"{Fore.LIGHTYELLOW_EX}---------------------------------------------------------------------------------------------")
 
+def is_connected(timeout=3):
+    try:
+        socket.create_connection(("8.8.8.8", 53), timeout=timeout)
+        return True
+    except OSError:
+        return False
+
 def menu():
   options=["~ UPLOAD FILE","~ DOWNLOAD FILE","~ SUMMARISE FILE WITH AI","~ Delete File","~ Settings","~ LOGOUT"]
   options_menu=TerminalMenu(options,title="SELECT AN OPTION TO PERFORM ")
   printLine()
   option_selected=options_menu.show()
+  if option_selected is None:
+      return None
   printLine()
   print(f"You selected {Fore.BLUE}{options[option_selected]}")
   return option_selected
@@ -41,117 +56,137 @@ def printQuote():
   printLine()
 
 
-art =f"""
-
-         ███             ███             ███ 
-       ███░            ███░            ███░  
-     ███░            ███░            ███░    
-   ███░            ███░            ███░      
- ███░            ███░            ███░        
-██░            ███░            ███░          
-░            ███░            ███░            
-            ░░░             ░░░             ░
-     ██__   __  _______█ ___  ______███     
-   ███|  | |  ||       ||   ||      |░      
- ███░ |  |_|  ||   _   ||   ||  _    |      
-██░   |       ||  | |  ||   || | |   |                  {Fore.RED}{formatted_time}
-░     |       ||  |_|  ||   || |_|   |      
-       |     |░|       ||   ||       |    ██
-        |___|  |_______||___||______|   ███░
-        ░░░             ░░░             ░░░  
- ███             ███             ███        
-██░            ███░            ███░          
-░            ███░            ███░            
-           ███░            ███░            ██
-         ███░            ███░            ███░
-       ███░            ███░            ███░  
-     ███░            ███░            ███░"""
+art = f"""
+{Fore.BLUE}
+ ██╗   ██╗ ██████╗ ██╗██████╗ 
+ ██║   ██║██╔═══██╗██║██╔══██╗
+ ██║   ██║██║   ██║██║██║  ██║
+ ╚██╗ ██╔╝██║   ██║██║██║  ██║
+  ╚████╔╝ ╚██████╔╝██║██████╔╝
+   ╚═══╝   ╚═════╝ ╚═╝╚═════╝ 
+"""
 
 
 printLine()
 print(f"{Back.BLACK + Fore.GREEN}{art}")
-printLine()
-
+print(f"{Back.BLACK}{Fore.YELLOW}   ~SORTED :)                {Fore.RED}   {formatted_time}")
 printQuote()
+
+if not is_connected():
+    print(f"{Fore.RED}~ No internet connection. Please connect and restart.")
+    sys.exit()
 
 ### AUTHENTICATION PROCESSSSS #####
 UUID = None
 
-# options_list=["Sign In","Sign Up","Exit"]
+options_list=["Sign In","Sign Up","Exit"]
 
-# while(not athu.is_user_valid_huh(athu.IS_LEGIT)):
-#     option_menu=TerminalMenu(options_list,title="Select")
-#     option_selected=option_menu.show()
-#     if (option_selected==0):
-#       UUID = athu.login()
-#     elif(option_selected==1):
-#       athu.register()
-#     elif (option_selected==2):
-#        printQuote()
-#        print(f"\n{Back.GREEN}{Fore.BLACK}Thank you :)")
-#        sys.exit()
-       
-  
-UUID=athu.login()
-files = athu.supabase.storage.from_("VOID_FILES").list(f"{UUID}/DSA")
-print (files)
+while(not athu.is_user_valid_huh(athu.IS_LEGIT)):
+    option_menu=TerminalMenu(options_list,title="Select")
+    option_selected=option_menu.show()
+    if (option_selected==0):
+      UUID = athu.login()
+    elif(option_selected==1):
+      athu.register()
+    elif (option_selected==2):
+       printQuote()
+       print(f"\n{Back.GREEN}{Fore.BLACK}Thank you :)")
+       sys.exit()
        
 
-# #### MAIN FLOW OF THE PROGRAM ####
-# action = menu()
 
-# ### UPLOADING THE FILE ####
-# if action == 0:
-#   file_selected = dirNavigator.navigate()
-#   result=summarise(file_location=file_selected)
-#   tags=result.split(':')
-#   print(f"The tags for this documents are : ")
-#   print(f"{Fore.CYAN}SUBJECT  : {tags[0]}")
-#   print(f"{Fore.CYAN}CATEGORY : {tags[1]}")
-#   print(f"{Fore.CYAN}SUMMARY  : {tags[2]}")
-#   yes_no_options=["No","Yes"]
-#   yes_no_menu=TerminalMenu(yes_no_options,title="WOULD YOU LIKE TO EDIT ANY TAG ?(incase of handwritten notes)")
-#   yes_no_selected=yes_no_menu.show()
 
-#   if yes_no_selected == 1:
-#     tags_menu = TerminalMenu(tags,title="Select the tag to change")
-#     tags_selected=tags_menu.show()
+while(True):
+   # #### MAIN FLOW OF THE PROGRAM ####
+  action = menu()
+  if action is None:
+      continue
 
-#     if tags_selected == 0 :
-#       allowed_subjects=getSub()
-#       subject=input(f"{Fore.BLUE}Enter the Subject,choose from {Fore.RED} {allowed_subjects} : ").strip()
-#       while(True):
-#         if subject in allowed_subjects:
-#           break
-#         else:
-#           subject=input(f"{Fore.RED}Choose again,only from ({allowed_subjects})").strip()
+  if not is_connected():
+      print(f"{Fore.RED}~ Lost internet connection. Reconnect and try again.")
+      continue
 
-#       tags[0]=subject
+  ### UPLOADING THE FILE ####
+  if action == 0:
+     upload_file.upload_to_supabase(UUID)
+     continue
 
-#     elif tags_selected==1 :
-#       category = input(f"{Fore.BLUE}Enter the Category : ")
-#       tags[1]=category
-
-#     elif tags_selected==2 :
-#       summary=input(f"{Fore.BLUE}Enter the Summary : ")
-#       tags[2]=summary
   
+  ### DOWNLOADING THE FILE ! #####
 
-#   with open(file_selected,"rb") as file :
-#     try :
-#       filename=os.path.basename(file_selected)
-#       tags[0]=tags[0].strip()
-#       supa_storage_path=f"{UUID}/{tags[0]}/{filename}"
+  if action == 1 :
+    directory=selectSupabaseFiles.selectDirectory(UUID=UUID)
+    if directory is None:
+        continue
+    file=selectSupabaseFiles.selectFile(UUID=UUID,directory=directory)
+    if file is None:
+        continue
 
-#       response = athu.supabase.storage.from_("VOID_FILES").upload(
-#           path=supa_storage_path,
-#           file=file
-#       )
+    storage_path=file["storage_path"]
 
-#       # print(response)
-#       print(f"{Fore.GREEN}{Back.YELLOW}~ {filename} uploaded successfully at path {supa_storage_path}") 
+    options=["DOWNLOAD THE FILE DIRECTLY","GET A URL OF THE FILE"]
+    options_menu=TerminalMenu(options,title="SELECT...")
+    selected=options_menu.show()
+    if selected is None:
+        continue
+  
+  ### CHATING WITH THE AI REGARDING A FILE ! 
+
+  if action == 2:  
+    directory = selectSupabaseFiles.selectDirectory(UUID=UUID)
+    if directory is None:
+        continue
+    file = selectSupabaseFiles.selectFile(UUID=UUID, directory=directory)
+    if file is None:
+        continue
+
+    chat_with_file(file["storage_path"],athu=athu)
+
+
+  ## deleting a file !
+  if action== 3: 
+    directory=selectSupabaseFiles.selectDirectory(UUID=UUID)
+    if directory is None:
+        continue
+    file=selectSupabaseFiles.selectFile(UUID=UUID,directory=directory)
+
+    if file is None:
+        continue
     
-#     except Exception as e:
-#       print(f"{Fore.RED}{Back.BLACK}Error Pushing the file ({filename} bcuz of : {e})")
+    storage_path=file["storage_path"]
+    file_name=storage_path.split("/")
+    file_name=file_name[2]
+
+    print(f"{Fore.RED}{Back.BLACK}Are you sure to delete the : {file_name}")
+    yes_no_menu = TerminalMenu(["No", "Yes"], title="ARE YOU COMPLETELY SURE ?")
+
+    if yes_no_menu.show() == 0:
+      print(f"{Fore.BLUE}Backing off :)")
+      continue
+
+    if yes_no_menu.show() == 1:
        
-# # if action == 1 :
+      table_deleted = False
+
+      try:
+          athu.supabase.table("USERS_DATA").delete().eq("storage_path", storage_path).eq("USER_ID", UUID).execute()
+          table_deleted = True
+
+          athu.supabase.storage.from_("VOID_FILES").remove([storage_path])
+          print(f"{Fore.GREEN}~ '{file_name}' deleted from both database and storage.")
+      except httpx.ConnectError:
+          print(f"{Fore.RED}~ Connection lost mid-delete. Check your internet and try again :(")
+      except Exception as e:
+          print(f"{Fore.RED}~ Delete failed: {e}")
+
+          if table_deleted:
+              print(f"{Fore.YELLOW}~ Warning: DB record removed but file may still exist in storage. Manual cleanup may be needed.")
+
+
+  if action==5:
+
+    athu.supabase.auth.sign_out()
+    printLine()     
+    print(f"{Back.BLACK}{Fore.BLUE}~ THANK YOU :) ~")
+    printLine()
+    sys.exit()
