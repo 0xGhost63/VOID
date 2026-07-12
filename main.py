@@ -12,6 +12,7 @@ import os
 import sys
 import socket
 from configuration import configuration_check
+import settings
 
 init(autoreset=True)
 
@@ -89,6 +90,7 @@ while(not athu.is_user_valid_huh(athu.IS_LEGIT)):
        sys.exit()
        
 
+print(f"{Fore.LIGHTMAGENTA_EX}Checking the configs...")
 configs=configuration_check()
 
 if not configs :
@@ -188,6 +190,11 @@ while(True):
 
           if table_deleted:
               print(f"{Fore.YELLOW}~ Warning: DB record removed but file may still exist in storage. Manual cleanup may be needed.")
+
+
+  # $$$$$$$$$ SETTINGS $$$$$$$$
+  if action == 4 :
+    settings.settings_menu()
 
 
   if action==5:
