@@ -11,12 +11,7 @@ import dirNavigator
 import os
 import sys
 import socket
-from pdf_sumariser import summarise
-from subjects import getSub 
-import upload_file
-import selectSupabaseFiles
-from chat import chat_with_file
-
+from configuration import configuration_check
 
 init(autoreset=True)
 
@@ -93,6 +88,18 @@ while(not athu.is_user_valid_huh(athu.IS_LEGIT)):
        print(f"\n{Back.GREEN}{Fore.BLACK}Thank you :)")
        sys.exit()
        
+
+configs=configuration_check()
+
+if not configs :
+  print(f"{Fore.RED}Failed to set-up the configurations...quitting :(")
+  sys.exit()
+
+from subjects import getSub 
+from pdf_sumariser import summarise
+import upload_file
+import selectSupabaseFiles
+from chat import chat_with_file
 
 
 
