@@ -5,7 +5,7 @@ import random
 from supabase import create_client,ClientOptions
 import httpx
 from datetime import datetime
-from simple_term_menu import TerminalMenu
+from menu_compat import TerminalMenu
 import authentication as athu
 import dirNavigator
 import os

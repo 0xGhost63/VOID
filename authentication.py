@@ -7,7 +7,7 @@ import sys
 from supabase import create_client, ClientOptions
 from dotenv import load_dotenv
 import os
-from simple_term_menu import TerminalMenu
+from menu_compat import TerminalMenu
 from colorama import Fore,init,Back
 import httpx
 import time
@@ -96,11 +96,11 @@ def register():
             }
         })
 
-        supabase.table("profiles").insert({
-            "id": response.user.id,
-            "username": username,
-            "email": email
-        }).execute()
+        # supabase.table("profiles").insert({
+        #     "id": response.user.id,
+        #     "username": username,
+        #     "email": email
+        # }).execute()
 
         print(f"Please Wait !")
 

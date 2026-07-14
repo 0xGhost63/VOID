@@ -5,7 +5,7 @@ import dirNavigator
 import authentication as athu
 from pdf_sumariser import summarise
 from colorama import Fore, Back, init
-from simple_term_menu import TerminalMenu
+from menu_compat import TerminalMenu
 from subjects import getSub
 
 init(autoreset=True)

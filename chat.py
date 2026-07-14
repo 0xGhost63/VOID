@@ -4,7 +4,7 @@ import tempfile
 from dotenv import load_dotenv
 from groq import Groq
 from colorama import Fore
-import fitz  # PyMuPDF
+import fitz  
 
 load_dotenv()
 

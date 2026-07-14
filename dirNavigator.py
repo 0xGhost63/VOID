@@ -1,5 +1,5 @@
 import os 
-from simple_term_menu import TerminalMenu
+from menu_compat import TerminalMenu
 from colorama import Fore,init,Back
 
 def navigate():

@@ -1,4 +1,4 @@
- 
+
 def getSub():
-    subjects = ['DLD', 'CALCULUS', 'ENTREPNEURSHIP', 'STATISTICS', 'DSA']
+    subjects = ['DSA']
     return subjects

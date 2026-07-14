@@ -1,6 +1,6 @@
 from subjects import getSub
 from colorama import Fore,Back,init
-from simple_term_menu import TerminalMenu
+from menu_compat import TerminalMenu
 import authentication as athu
 
 def selectDirectory(UUID):
