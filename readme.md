@@ -31,7 +31,7 @@ You only need [Python 3.10+](https://www.python.org/downloads/) and a network co
 ### Linux / macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/0xGhost63/VOID/main/scripts/sinstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/0xGhost63/VOID/main/scripts/install.sh | bash
 ```
 
 ### Windows
@@ -49,9 +49,7 @@ What the installer does:
 
 If `void` isn't found right away, open a new terminal (PATH refresh).
 
-### Update
 
-Re-run the same install command. Your existing `.env` is kept.
 
 ### Uninstall
 
