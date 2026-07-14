@@ -12,19 +12,15 @@ VOID lets you upload your notes, PDFs, and assignments to the cloud, organize th
 - **Chat with your files** — ask questions about a specific file and get answers grounded in its actual content, not generic guesses
 - **Delete cleanly** — remove files from both storage and your records in one go, with a confirmation step so nothing goes missing by accident
 - **Account system** — your files are tied to your account and synced across every machine you run VOID on, so switching devices doesn't mean starting over
-- **Subject-based organization** — set up your enrolled subjects once, and everything you upload gets sorted under them automatically
+- **Subject-based organization** — set up your enrolled subjects once (stored per-account in the cloud), and everything you upload gets sorted under them automatically
 
 <br>
 
-**[screenshot 1 — login / main menu]**
+![VOID login](screenshots/login.png)
 
 <br>
 
-**[screenshot 2 — file upload or AI summary in action]**
-
-<br>
-
-**[screenshot 3 — chat with file feature]**
+![VOID chat with a file](screenshots/chat.png)
 
 <br>
 
@@ -48,7 +44,12 @@ Open PowerShell and run:
 irm https://raw.githubusercontent.com/0xGhost63/VOID/main/install.ps1 | iex
 ```
 
-Both scripts do the same thing under the hood: they clone the project into a hidden folder in your home directory, set up an isolated Python environment so VOID's dependencies never clash with anything else on your system, install everything it needs, and register the `void` command so you can run it from anywhere.
+Both scripts do the same thing under the hood:
+
+1. Clone VOID into `~/.void-cli` (or `%USERPROFILE%\.void-cli` on Windows)
+2. Copy the public config from `.env.example` → `.env` (Supabase publishable key + API URL — no secret AI keys on your machine)
+3. Create an isolated Python `venv` and install dependencies
+4. Register the `void` command so you can run it from anywhere
 
 If your terminal doesn't recognize `void` right after installing, close it and open a fresh one — this lets your PATH changes take effect.
 
@@ -59,6 +60,7 @@ If you'd rather not run a script off the internet (fair enough), you can set it 
 ```bash
 git clone https://github.com/0xGhost63/VOID.git
 cd VOID
+cp .env.example .env
 python3 -m venv venv
 source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -75,7 +77,7 @@ Once installed, just type:
 void
 ```
 
-anywhere, from any directory. On first run you'll be asked to sign in or create an account, then you'll land on the main menu where you can upload, download, summarize, chat with, or delete your files.
+anywhere, from any directory. On first run you'll be asked to sign in or create an account, then set your subjects if the account is new. After that you'll land on the main menu where you can upload, download, summarize, chat with, or delete your files.
 
 VOID checks for updates every time you launch it, pulling the latest version from GitHub automatically before it starts. That means you'll always be running the newest release without ever needing to reinstall or manually update anything — just close and reopen it.
 
@@ -93,21 +95,24 @@ Every menu in VOID works the same way, so once you've navigated one, you already
 
 ## Troubleshooting
 
-- **`void: command not found`** — restart your terminal, or make sure the install directory got added to your PATH (the installer prints a message if it needs manual attention).
-- **Login fails repeatedly** — double check your internet connection; VOID checks for connectivity on launch and will tell you if it can't reach the server.
-- **Windows Defender or antivirus flags the install script** — this is a common false positive for PowerShell scripts that download and run code. You can inspect `install.ps1` directly on GitHub before running it if you want to verify what it does first.
+- **`curl: (22) The requested URL returned error: 404`** — you're on an old install URL, or GitHub hasn't updated yet. Use the exact commands above (`.../main/install.sh` and `.../main/install.ps1` at the **repo root**, not under `scripts/`).
+- **`void: command not found`** — restart your terminal, or add `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` / `~/.zshrc` (the installer prints this if needed).
+- **`ensurepip` / `venv` errors on Linux** — install the venv package, e.g. `sudo apt install python3-venv`, then re-run the installer.
+- **Login fails repeatedly** — check your internet connection; VOID needs to reach Supabase. Also make sure `.env` exists in the install folder (re-running the installer recreates it from `.env.example` if missing).
+- **AI summarise / chat fails** — those calls go through the hosted VOID web backend; you need network access, and you must be logged in (session token).
+- **Windows Defender or antivirus flags the install script** — this is a common false positive for PowerShell scripts that download and run code. You can inspect [`install.ps1`](https://github.com/0xGhost63/VOID/blob/main/install.ps1) on GitHub before running it if you want to verify what it does first.
 
 ## Prefer not to install anything?
 
 VOID also has a full web version, available at:
 
-**[void.vercel.app](https://0xghost-void.vercel.app/)**
+**[0xghost-void.vercel.app](https://0xghost-void.vercel.app/)**
 
-It's a browser-based rebuild of VOID on FastAPI and Supabase, with AI-assisted uploads that auto-tag your PDFs by subject and type, per-file chat, a dashboard with usage stats, and a one-click export of all your data as a zip. Subjects are stored per-account in Supabase rather than in a local file, so your setup on the web doesn't interfere with your setup on the CLI — the two can be used side by side without conflicts. It's a solid option if you're on a machine you don't want to install anything on, or just want to try VOID out before committing to the terminal version. The CLI stays the primary experience and is where new features land first, but the web app covers the core workflow just as well.
+It's a browser-based rebuild of VOID on FastAPI and Supabase, with AI-assisted uploads that auto-tag your PDFs by subject and type, per-file chat, a dashboard with usage stats, and a one-click export of all your data as a zip. Subjects are stored per-account in Supabase and are shared with the CLI for the same login — so what you set in Settings on either side stays in sync. It's a solid option if you're on a machine you don't want to install anything on, or just want to try VOID out before committing to the terminal version.
 
 ## Built with
 
-Python, Supabase (auth + storage), Groq for AI inference, and a terminal UI that doesn't take itself too seriously.
+Python, Supabase (auth + storage + per-user subjects), and Groq / Gemini via the VOID web backend for AI — plus a terminal UI that doesn't take itself too seriously.
 
 ## License / credit
 
