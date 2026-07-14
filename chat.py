@@ -1,32 +1,11 @@
 import httpx
 import os
 import tempfile
-from dotenv import load_dotenv
-from groq import Groq
+import requests
 from colorama import Fore
-import fitz  
+import fitz
 
-load_dotenv()
-
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
-# Try these in order — if one fails (rate limit, overloaded, etc.), fall to the next
-GROQ_MODELS = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
-    "gemma2-9b-it"
-]
-
-SYSTEM_PROMPT = """You are a focused document Q&A assistant. Follow these rules strictly:
-
-1. ONLY answer based on the content of the provided document. Do not use outside knowledge unless explicitly asked to.
-2. If the answer isn't in the document, say clearly: "I couldn't find that in the document." Do NOT guess or make up information.
-3. Be concise and direct. No filler, no unnecessary preamble.
-4. If asked to summarize, quote, or explain a section, stay strictly within what the document actually contains.
-5. Remember the full conversation history provided below — stay consistent with what you've already said.
-6. If the user asks something ambiguous, ask a clarifying question instead of assuming.
-
-Never fabricate page numbers, section names, or facts not present in the document."""
+API_BASE = os.getenv("VOID_API_BASE", "https://0xghost-void.vercel.app").rstrip("/")
 
 
 def extract_text(file_path):
@@ -45,8 +24,8 @@ def short_error(e):
     msg = str(e)
     if "429" in msg or "rate limit" in msg.lower():
         return "rate limit hit"
-    if "401" in msg or ("invalid" in msg.lower() and "key" in msg.lower()):
-        return "invalid API key"
+    if "401" in msg:
+        return "session expired, please log in again"
     if "timeout" in msg.lower():
         return "request timed out"
     if "overloaded" in msg.lower() or "503" in msg:
@@ -54,41 +33,22 @@ def short_error(e):
     return msg[:80] + ("..." if len(msg) > 80 else "")
 
 
-def build_context_prompt(chat_history, user_message):
-    history_text = ""
-    for turn in chat_history:
-        history_text += f"User: {turn['user']}\nAssistant: {turn['assistant']}\n\n"
-
-    return f"""{SYSTEM_PROMPT}
-
---- CONVERSATION HISTORY SO FAR ---
-{history_text if history_text else "(no previous messages yet)"}
-
---- CURRENT QUESTION ---
-User: {user_message}
-
-Respond as the assistant, staying consistent with the conversation history above."""
-
-
-def ask_groq(document_text, chat_history, user_message):
-    """Tries each model in GROQ_MODELS in order until one succeeds."""
-    prompt = build_context_prompt(chat_history, user_message)
-    full_prompt = f"DOCUMENT CONTENT:\n{document_text[:15000]}\n\n{prompt}"
-
-    last_error = None
-    for model in GROQ_MODELS:
-        try:
-            response = groq_client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": full_prompt}]
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            last_error = e
-            print(f"{Fore.YELLOW}~ {model} unavailable ({short_error(e)}), trying next model...")
-            continue
-
-    raise last_error  # all models failed, bubble up
+def ask_backend(document_text, chat_history, user_message, access_token):
+    """Sends the question + document + history to the VOID backend (holds the Groq key)."""
+    payload = {
+        "document_text": document_text[:15000],
+        "chat_history": chat_history,
+        "message": user_message,
+    }
+    headers = {"Authorization": f"Bearer {access_token}"}
+    resp = requests.post(
+        f"{API_BASE}/api/cli/chat",
+        json=payload,
+        headers=headers,
+        timeout=45,
+    )
+    resp.raise_for_status()
+    return resp.json()["answer"]
 
 
 def chat_with_file(storage_path, athu):
@@ -126,12 +86,14 @@ def chat_with_file(storage_path, athu):
             history_list = list(chat_history.values())
 
             try:
-                answer = ask_groq(document_text, history_list, user_input)
+                answer = ask_backend(
+                    document_text, history_list, user_input, athu.ACCESS_TOKEN
+                )
             except httpx.ConnectError:
                 print(f"{Fore.RED}~ Connection lost mid-response. Check your internet and try again.")
                 continue
-            except Exception as e:
-                print(f"{Fore.RED}~ All models failed ({short_error(e)}). Try again in a bit.")
+            except requests.exceptions.RequestException as e:
+                print(f"{Fore.RED}~ Couldn't reach the AI service ({short_error(e)}). Try again in a bit.")
                 continue
 
             print(f"{Fore.YELLOW}AI: {Fore.WHITE}{answer}\n")

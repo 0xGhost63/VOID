@@ -90,15 +90,16 @@ while(not athu.is_user_valid_huh(athu.IS_LEGIT)):
        sys.exit()
        
 
-print(f"{Fore.LIGHTMAGENTA_EX}Checking the configs...")
-configs=configuration_check()
+# Prefer auth module UUID (covers Sign Up → login nested path)
+UUID = athu.UUID or UUID
 
-if not configs :
+print(f"{Fore.LIGHTMAGENTA_EX}Checking the configs...")
+configs = configuration_check(UUID)
+
+if not configs:
   print(f"{Fore.RED}Failed to set-up the configurations...quitting :(")
   sys.exit()
 
-from subjects import getSub 
-from pdf_sumariser import summarise
 import upload_file
 import selectSupabaseFiles
 from chat import chat_with_file
@@ -193,13 +194,16 @@ while(True):
 
 
   # $$$$$$$$$ SETTINGS $$$$$$$$
-  if action == 4 :
-    settings.settings_menu()
+  if action == 4:
+    settings.settings_menu(UUID)
 
 
   if action==5:
 
     athu.supabase.auth.sign_out()
+    athu.ACCESS_TOKEN = ""
+    athu.UUID = ""
+    athu.IS_LEGIT = False
     printLine()     
     print(f"{Back.BLACK}{Fore.BLUE}~ THANK YOU :) ~")
     printLine()

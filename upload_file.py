@@ -6,16 +6,14 @@ import authentication as athu
 from pdf_sumariser import summarise
 from colorama import Fore, Back, init
 from menu_compat import TerminalMenu
-from subjects import getSub
+from subjects_service import get_subjects
 
 init(autoreset=True)
 
 
 
-def edit_tags_flow(tags):
+def edit_tags_flow(tags, allowed_subjects):
     """Lets the user optionally edit subject/category/summary. Mutates tags in place."""
-    allowed_subjects = getSub()
-
     print(f"{Fore.LIGHTYELLOW_EX}The RECOMMENDED tags for this document are : ")
     print(f"{Fore.CYAN}SUBJECT  :  {tags[0]}")
     print(f"{Fore.CYAN}CATEGORY : {tags[1]}")
@@ -27,9 +25,9 @@ def edit_tags_flow(tags):
         tags_selected = tags_menu.show()
 
         if tags_selected == 0:
-            subject = input(f"{Fore.BLUE}Enter the Subject, choose from {Fore.RED}{allowed_subjects} : ").strip()
+            subject = input(f"{Fore.BLUE}Enter the Subject, choose from {Fore.RED}{allowed_subjects} : ").strip().upper()
             while subject not in allowed_subjects:
-                subject = input(f"{Fore.RED}Choose again, only from (EXACT MATCH) {allowed_subjects} : ").strip()
+                subject = input(f"{Fore.RED}Choose again, only from (EXACT MATCH) {allowed_subjects} : ").strip().upper()
             tags[0] = subject
 
         elif tags_selected == 1:
@@ -96,17 +94,29 @@ def upload_to_supabase(UUID):
     while True:
 
         try:
+            allowed_subjects, err = get_subjects(UUID)
+            if err:
+                print(f"{Fore.RED}Cannot upload without subjects: {err}")
+                return
+            if not allowed_subjects:
+                print(f"{Fore.RED}No subjects configured. Set them in Settings first.")
+                return
+
             file_selected = dirNavigator.navigate()
-            result = summarise(file_location=file_selected)
+            result = summarise(
+                file_location=file_selected,
+                authorized_subjects=allowed_subjects,
+                access_token=athu.ACCESS_TOKEN,
+            )
             tags = result.split(':')
         except Exception as e:
             print(f"{Fore.RED}Failed to select/summarise file: {e}")
             continue
-        tags = edit_tags_flow(tags)
+        tags = edit_tags_flow(tags, allowed_subjects)
         success = upload_and_sync(UUID, file_selected, tags)
 
         if success:
-            break  
+            break
         retry_menu = TerminalMenu(["No, stop", "Yes, try another file"], title="Upload failed. Try again?")
         if retry_menu.show() != 1:
             break

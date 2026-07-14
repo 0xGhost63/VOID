@@ -17,6 +17,7 @@ init(autoreset=True)
 SUPABASE_URL = os.getenv("PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_PUBLISHABLE_KEY")
 UUID = ""
+ACCESS_TOKEN = ""
 IS_LEGIT=False
 
 def is_user_valid_huh(IS_LEGIT):
@@ -37,7 +38,7 @@ except Exception as e:
     print(f"Error : {e}")
 
 def login():
-    global IS_LEGIT, UUID
+    global IS_LEGIT, UUID, ACCESS_TOKEN
     identifier=input(f"{Fore.CYAN}Enter username/email : ")
     password=input(f"{Fore.CYAN}Enter your password : ")
 
@@ -64,6 +65,7 @@ def login():
 
         print(f"{Fore.GREEN}Login successful!")
         UUID = response.user.id
+        ACCESS_TOKEN = response.session.access_token
         IS_LEGIT = True
         return UUID
     except Exception as e:
@@ -121,8 +123,12 @@ def logout():
     choice_menu=TerminalMenu(choice_options,title="Are you sure to logout ? ")    
     choice_selected=choice_menu.show()
     if(choice_selected==0):
+        global ACCESS_TOKEN, UUID, IS_LEGIT
         try:
             supabase.auth.sign_out()
+            ACCESS_TOKEN = ""
+            UUID = ""
+            IS_LEGIT = False
             print(f"{Fore.GREEN}Loging out Success ! Signing off...")
             print(f"{Fore.CYAN}Have a good day :)")
             sys.exit()

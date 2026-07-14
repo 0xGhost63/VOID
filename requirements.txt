@@ -3,7 +3,6 @@ pyperclip
 supabase
 httpx
 python-dotenv
-groq
 pymupdf
 tqdm
 requests
