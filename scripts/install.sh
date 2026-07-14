@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ZIP_URL="https://github.com/0xGhost63/VOID/archive/refs/heads/main.zip"
+REPO="0xGhost63/VOID"
+ZIP_URL="https://github.com/${REPO}/archive/refs/heads/main.zip"
+API_URL="https://api.github.com/repos/${REPO}/commits/main"
+WEB_URL="https://0xghost-void.vercel.app"
 INSTALL_DIR="${HOME}/.void-cli"
 BIN_DIR="${HOME}/.local/bin"
 TMP_DIR="$(mktemp -d)"
@@ -35,7 +38,6 @@ say ""
 say "  VOID  —  terminal install"
 say "  --------------------------------"
 say "  target : ${INSTALL_DIR}"
-say "  no git : zip pull from GitHub"
 say ""
 
 # ── 1. deps check ────────────────────────────────────────────────────────────
@@ -105,7 +107,6 @@ cd "$INSTALL_DIR"
 
 bar 55 "config ready"
 
-# ── 4. venv + deps ──────────────────────────────────────────────────────────
 bar 60 "building virtualenv..."
 python3 -m venv venv
 # shellcheck disable=SC1091
@@ -118,21 +119,102 @@ bar 80 "installing packages (this takes a bit)..."
 pip install -r requirements.txt >/dev/null
 deactivate
 
-# ── 5. launcher ──────────────────────────────────────────────────────────────
+# ── stash the commit we just installed, so the launcher doesn't think ────────
+# ── an update is available on its very first run ─────────────────────────────
+bar 88 "recording version..."
+if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$API_URL" 2>/dev/null \
+        | python3 -c "import json,sys; print(json.load(sys.stdin).get('sha',''))" 2>/dev/null \
+        > "${INSTALL_DIR}/.void-commit" || true
+fi
+
 bar 92 "wiring 'void' command..."
 mkdir -p "$BIN_DIR"
-cat > "${BIN_DIR}/void" << 'EOF'
+cat > "${BIN_DIR}/void" << LAUNCHER_EOF
 #!/usr/bin/env bash
 set -e
-INSTALL_DIR="${HOME}/.void-cli"
-cd "$INSTALL_DIR" || { echo "VOID is not installed. Re-run the installer."; exit 1; }
+INSTALL_DIR="\${HOME}/.void-cli"
+BIN_PATH="\${HOME}/.local/bin/void"
+REPO="${REPO}"
+API_URL="${API_URL}"
+ZIP_URL="${ZIP_URL}"
+WEB_URL="${WEB_URL}"
+
+# ── --web : open the landing page ────────────────────────────────────────────
+if [ "\${1:-}" = "--web" ]; then
+    if command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "\$WEB_URL" >/dev/null 2>&1 &
+    elif command -v open >/dev/null 2>&1; then
+        open "\$WEB_URL"
+    elif command -v wslview >/dev/null 2>&1; then
+        wslview "\$WEB_URL"
+    else
+        echo "Open this in your browser: \$WEB_URL"
+    fi
+    exit 0
+fi
+
+# ── --delete : wipe all app data ─────────────────────────────────────────────
+if [ "\${1:-}" = "--delete" ]; then
+    echo "This will permanently delete VOID and all its data:"
+    echo "  \${INSTALL_DIR}"
+    read -r -p "Are you sure? [y/N] " confirm
+    case "\$confirm" in
+        y|Y|yes|YES)
+            rm -rf "\${INSTALL_DIR}"
+            rm -f "\$BIN_PATH"
+            echo "VOID has been removed."
+            ;;
+        *)
+            echo "Cancelled."
+            ;;
+    esac
+    exit 0
+fi
+
+cd "\$INSTALL_DIR" || { echo "VOID is not installed. Re-run the installer."; exit 1; }
 if [ ! -f .env ] && [ -f .env.example ]; then
     cp .env.example .env
 fi
+
+# ── check for updates against the latest commit on main ──────────────────────
+if command -v curl >/dev/null 2>&1; then
+    LATEST_SHA="\$(curl -fsSL "\$API_URL" 2>/dev/null \\
+        | python3 -c "import json,sys; print(json.load(sys.stdin).get('sha',''))" 2>/dev/null || true)"
+    LOCAL_SHA=""
+    [ -f .void-commit ] && LOCAL_SHA="\$(cat .void-commit)"
+    if [ -n "\$LATEST_SHA" ] && [ "\$LATEST_SHA" != "\$LOCAL_SHA" ]; then
+        echo "Update found — updating VOID..."
+        TMP_UPDATE="\$(mktemp -d)"
+        if curl -fsSL "\$ZIP_URL" -o "\${TMP_UPDATE}/void.zip" 2>/dev/null; then
+            python3 - "\${TMP_UPDATE}/void.zip" "\$TMP_UPDATE" <<'PY'
+import sys, zipfile
+zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])
+PY
+            UPD_SRC=""
+            for candidate in "\${TMP_UPDATE}/VOID-main" "\${TMP_UPDATE}/VOID-master"; do
+                [ -d "\$candidate" ] && UPD_SRC="\$candidate" && break
+            done
+            if [ -n "\$UPD_SRC" ]; then
+                cp -a "\${UPD_SRC}/." "\$INSTALL_DIR/"
+                echo "\$LATEST_SHA" > "\${INSTALL_DIR}/.void-commit"
+                if [ -f requirements.txt ]; then
+                    # shellcheck disable=SC1091
+                    source venv/bin/activate
+                    pip install -q --upgrade -r requirements.txt >/dev/null 2>&1 || true
+                    deactivate
+                fi
+                echo "Updated to latest version."
+            fi
+        fi
+        rm -rf "\$TMP_UPDATE"
+    fi
+fi
+
 # shellcheck disable=SC1091
 source venv/bin/activate
-exec python main.py "$@"
-EOF
+exec python main.py "\$@"
+LAUNCHER_EOF
 chmod +x "${BIN_DIR}/void" 2>/dev/null || true
 
 bar 100 "done"
@@ -147,8 +229,7 @@ if [[ ":${PATH}:" != *":${BIN_DIR}:"* ]]; then
     say ""
 fi
 
-say "  launch :  void"
-say "  update :  re-run this installer (your .env is kept)"
-say "  remove :"
-say "      rm -rf ~/.void-cli && rm -f ~/.local/bin/void"
+say "  launch        :  void"
+say "  open webpage  :  void --web"
+say "  wipe app data :  void --delete"
 say ""

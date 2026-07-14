@@ -31,13 +31,13 @@ You only need [Python 3.10+](https://www.python.org/downloads/) and a network co
 ### Linux / macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/0xGhost63/VOID/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/0xGhost63/VOID/main/scripts/sinstall.sh | bash
 ```
 
 ### Windows
 
 ```powershell
-irm https://raw.githubusercontent.com/0xGhost63/VOID/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/0xGhost63/VOID/main/scripts/install.ps1 | iex
 ```
 
 What the installer does:

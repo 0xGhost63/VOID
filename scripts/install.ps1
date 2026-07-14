@@ -1,6 +1,9 @@
 $ErrorActionPreference = "Stop"
 
-$ZipUrl     = "https://github.com/0xGhost63/VOID/archive/refs/heads/main.zip"
+$Repo       = "0xGhost63/VOID"
+$ZipUrl     = "https://github.com/$Repo/archive/refs/heads/main.zip"
+$ApiUrl     = "https://api.github.com/repos/$Repo/commits/main"
+$WebUrl     = "https://0xghost-void.vercel.app"
 $InstallDir = Join-Path $env:USERPROFILE ".void-cli"
 $BinDir     = Join-Path $env:USERPROFILE ".void-bin"
 $TmpDir     = Join-Path $env:TEMP ("void-install-" + [guid]::NewGuid().ToString("N"))
@@ -33,7 +36,6 @@ try {
     Write-Host "  VOID  —  terminal install"
     Write-Host "  --------------------------------"
     Write-Host "  target : $InstallDir"
-    Write-Host "  no git : zip pull from GitHub"
     Write-Host ""
 
     Write-Bar 5 "checking python..."
@@ -112,15 +114,104 @@ try {
     Write-Bar 80 "installing packages (this takes a bit)..."
     & $Pip install -r requirements.txt | Out-Null
 
+    # ── stash the commit we just installed, so the launcher doesn't think ────
+    # ── an update is available on its very first run ─────────────────────────
+    Write-Bar 88 "recording version..."
+    try {
+        $InstalledCommit = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing
+        if ($InstalledCommit.sha) {
+            Set-Content -Path (Join-Path $InstallDir ".void-commit") -Value $InstalledCommit.sha -NoNewline
+        }
+    } catch {
+        # offline / rate-limited — fine, first launch will just check again
+    }
+
     Write-Bar 92 "wiring 'void' command..."
     New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
-    $Launcher = @"
+
+    # void.cmd just forwards to the PowerShell launcher, which does the real work
+    $CmdLauncher = @"
 @echo off
-cd /d "$InstallDir"
-if not exist ".env" if exist ".env.example" copy /Y ".env.example" ".env" >nul
-"$Py" main.py %*
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0void.ps1" %*
 "@
-    Set-Content -Path (Join-Path $BinDir "void.cmd") -Value $Launcher -Encoding ASCII
+    Set-Content -Path (Join-Path $BinDir "void.cmd") -Value $CmdLauncher -Encoding ASCII
+
+    $Ps1Launcher = @"
+`$ErrorActionPreference = "Stop"
+`$InstallDir = Join-Path `$env:USERPROFILE ".void-cli"
+`$Repo       = "$Repo"
+`$ApiUrl     = "$ApiUrl"
+`$ZipUrl     = "$ZipUrl"
+`$WebUrl     = "$WebUrl"
+
+`$CliArgs = `$args
+
+# -- --web : open the landing page --------------------------------------------
+if (`$CliArgs.Count -gt 0 -and `$CliArgs[0] -eq "--web") {
+    Start-Process `$WebUrl
+    exit 0
+}
+
+# -- --delete : wipe all app data ---------------------------------------------
+if (`$CliArgs.Count -gt 0 -and `$CliArgs[0] -eq "--delete") {
+    Write-Host "This will permanently delete VOID and all its data:"
+    Write-Host "  `$InstallDir"
+    `$confirm = Read-Host "Are you sure? [y/N]"
+    if (`$confirm -match '^(y|yes)$') {
+        Remove-Item -Recurse -Force `$InstallDir -ErrorAction SilentlyContinue
+        Remove-Item -Force `$PSCommandPath -ErrorAction SilentlyContinue
+        Remove-Item -Force (Join-Path (Split-Path `$PSCommandPath) "void.cmd") -ErrorAction SilentlyContinue
+        Write-Host "VOID has been removed."
+    } else {
+        Write-Host "Cancelled."
+    }
+    exit 0
+}
+
+if (-not (Test-Path `$InstallDir)) {
+    Write-Host "VOID is not installed. Re-run the installer."
+    exit 1
+}
+Set-Location `$InstallDir
+
+if ((-not (Test-Path ".env")) -and (Test-Path ".env.example")) {
+    Copy-Item ".env.example" ".env" -Force
+}
+
+# -- check for updates against the latest commit on main ----------------------
+try {
+    `$Latest = Invoke-RestMethod -Uri `$ApiUrl -UseBasicParsing
+    `$LatestSha = `$Latest.sha
+    `$LocalSha = ""
+    if (Test-Path ".void-commit") { `$LocalSha = (Get-Content ".void-commit" -Raw).Trim() }
+    if (`$LatestSha -and (`$LatestSha.Trim() -ne `$LocalSha)) {
+        Write-Host "Update found -- updating VOID..."
+        `$TmpUpdate = Join-Path `$env:TEMP ("void-update-" + [guid]::NewGuid().ToString("N"))
+        New-Item -ItemType Directory -Force -Path `$TmpUpdate | Out-Null
+        `$ZipPath = Join-Path `$TmpUpdate "void.zip"
+        Invoke-WebRequest -Uri `$ZipUrl -OutFile `$ZipPath -UseBasicParsing
+        Expand-Archive -Path `$ZipPath -DestinationPath `$TmpUpdate -Force
+        `$UpdSrc = Join-Path `$TmpUpdate "VOID-main"
+        if (-not (Test-Path `$UpdSrc)) { `$UpdSrc = Join-Path `$TmpUpdate "VOID-master" }
+        if (Test-Path `$UpdSrc) {
+            Copy-Item -Path (Join-Path `$UpdSrc "*") -Destination `$InstallDir -Recurse -Force
+            Set-Content -Path ".void-commit" -Value `$LatestSha -NoNewline
+            `$Pip = Join-Path `$InstallDir "venv\Scripts\pip.exe"
+            if ((Test-Path `$Pip) -and (Test-Path "requirements.txt")) {
+                & `$Pip install -q --upgrade -r requirements.txt | Out-Null
+            }
+            Write-Host "Updated to latest version."
+        }
+        Remove-Item -Recurse -Force `$TmpUpdate -ErrorAction SilentlyContinue
+    }
+} catch {
+    # offline / rate-limited -- just launch what's already installed
+}
+
+`$Py = Join-Path `$InstallDir "venv\Scripts\python.exe"
+& `$Py "main.py" @CliArgs
+"@
+    Set-Content -Path (Join-Path $BinDir "void.ps1") -Value $Ps1Launcher -Encoding UTF8
 
     $UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
     if ($null -eq $UserPath) { $UserPath = "" }
@@ -135,11 +226,9 @@ if not exist ".env" if exist ".env.example" copy /Y ".env.example" ".env" >nul
     Write-Host "  installed -> $InstallDir"
     Write-Host "  launcher  -> $(Join-Path $BinDir 'void.cmd')"
     Write-Host ""
-    Write-Host "  launch :  void"
-    Write-Host "  update :  re-run this installer (your .env is kept)"
-    Write-Host "  remove :"
-    Write-Host "      Remove-Item -Recurse -Force `$env:USERPROFILE\.void-cli"
-    Write-Host "      Remove-Item -Force `$env:USERPROFILE\.void-bin\void.cmd"
+    Write-Host "  launch        :  void"
+    Write-Host "  open webpage  :  void --web"
+    Write-Host "  wipe app data :  void --delete"
     Write-Host ""
 }
 finally {
