@@ -26,11 +26,9 @@ VOID lets you upload your notes, PDFs, and assignments to the cloud, organize th
 
 ## Installation
 
-You'll need [Git](https://git-scm.com/downloads) and [Python 3.10+](https://www.python.org/downloads/) installed first. Both installers check for these and will tell you clearly if either is missing.
+You only need [Python 3.10+](https://www.python.org/downloads/) and a network connection. **Git is not required** — the installer pulls a zip of `main` from GitHub and walks you through a progress bar while it works.
 
 ### Linux / macOS
-
-Open a terminal and run:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/0xGhost63/VOID/main/install.sh | bash
@@ -38,28 +36,41 @@ curl -fsSL https://raw.githubusercontent.com/0xGhost63/VOID/main/install.sh | ba
 
 ### Windows
 
-Open PowerShell and run:
-
 ```powershell
 irm https://raw.githubusercontent.com/0xGhost63/VOID/main/install.ps1 | iex
 ```
 
-Both scripts do the same thing under the hood:
+What the installer does:
 
-1. Clone VOID into `~/.void-cli` (or `%USERPROFILE%\.void-cli` on Windows)
-2. Copy the public config from `.env.example` → `.env` (Supabase publishable key + API URL — no secret AI keys on your machine)
-3. Create an isolated Python `venv` and install dependencies
-4. Register the `void` command so you can run it from anywhere
+1. Downloads VOID as a zip into `~/.void-cli` (Windows: `%USERPROFILE%\.void-cli`)
+2. Writes `.env` from `.env.example` (public Supabase + API URL only — no secret AI keys on your machine)
+3. Builds a local Python `venv` and installs dependencies
+4. Drops a `void` command on your PATH
 
-If your terminal doesn't recognize `void` right after installing, close it and open a fresh one — this lets your PATH changes take effect.
+If `void` isn't found right away, open a new terminal (PATH refresh).
 
-### Manual installation
+### Update
 
-If you'd rather not run a script off the internet (fair enough), you can set it up yourself:
+Re-run the same install command. Your existing `.env` is kept.
+
+### Uninstall
+
+**Linux / macOS**
+```bash
+rm -rf ~/.void-cli && rm -f ~/.local/bin/void
+```
+
+**Windows (PowerShell)**
+```powershell
+Remove-Item -Recurse -Force "$env:USERPROFILE\.void-cli" -ErrorAction SilentlyContinue
+Remove-Item -Force "$env:USERPROFILE\.void-bin\void.cmd" -ErrorAction SilentlyContinue
+```
+
+### Manual install (from a zip, still no git)
 
 ```bash
-git clone https://github.com/0xGhost63/VOID.git
-cd VOID
+curl -fsSL -o void.zip https://github.com/0xGhost63/VOID/archive/refs/heads/main.zip
+unzip void.zip && cd VOID-main
 cp .env.example .env
 python3 -m venv venv
 source venv/bin/activate      # Windows: venv\Scripts\activate
@@ -67,19 +78,13 @@ pip install -r requirements.txt
 python main.py
 ```
 
-You'll just need to re-run `git pull` and reinstall requirements manually whenever you want the latest version, since you're skipping the auto-update wrapper.
-
 ### Running it
-
-Once installed, just type:
 
 ```bash
 void
 ```
 
-anywhere, from any directory. On first run you'll be asked to sign in or create an account, then set your subjects if the account is new. After that you'll land on the main menu where you can upload, download, summarize, chat with, or delete your files.
-
-VOID checks for updates every time you launch it, pulling the latest version from GitHub automatically before it starts. That means you'll always be running the newest release without ever needing to reinstall or manually update anything — just close and reopen it.
+anywhere. First run: sign in (or register), set subjects if the account is new, then use the main menu.
 
 ## Using VOID
 
@@ -95,12 +100,13 @@ Every menu in VOID works the same way, so once you've navigated one, you already
 
 ## Troubleshooting
 
-- **`curl: (22) The requested URL returned error: 404`** — you're on an old install URL, or GitHub hasn't updated yet. Use the exact commands above (`.../main/install.sh` and `.../main/install.ps1` at the **repo root**, not under `scripts/`).
-- **`void: command not found`** — restart your terminal, or add `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` / `~/.zshrc` (the installer prints this if needed).
-- **`ensurepip` / `venv` errors on Linux** — install the venv package, e.g. `sudo apt install python3-venv`, then re-run the installer.
-- **Login fails repeatedly** — check your internet connection; VOID needs to reach Supabase. Also make sure `.env` exists in the install folder (re-running the installer recreates it from `.env.example` if missing).
-- **AI summarise / chat fails** — those calls go through the hosted VOID web backend; you need network access, and you must be logged in (session token).
-- **Windows Defender or antivirus flags the install script** — this is a common false positive for PowerShell scripts that download and run code. You can inspect [`install.ps1`](https://github.com/0xGhost63/VOID/blob/main/install.ps1) on GitHub before running it if you want to verify what it does first.
+- **`curl: (22) The requested URL returned error: 404`** — installer isn't on GitHub `main` yet, or wrong path. Use the repo-root URLs above (`.../main/install.sh`), not `scripts/`.
+- **`void: command not found`** — new terminal, or add `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` / `~/.zshrc`.
+- **`ensurepip` / `venv` errors on Linux** — `sudo apt install python3-venv`, then re-run the installer.
+- **Download / unpack fails** — need `curl` or `wget`, plus working internet to GitHub.
+- **Login fails repeatedly** — check connectivity to Supabase; confirm `.env` exists under `~/.void-cli` (re-run installer to recreate from `.env.example`).
+- **AI summarise / chat fails** — those go through the hosted VOID web backend; stay logged in and online.
+- **Windows Defender flags the install script** — common false positive for remote PowerShell. Inspect [`install.ps1`](https://github.com/0xGhost63/VOID/blob/main/install.ps1) before running if you want.
 
 ## Prefer not to install anything?
 
