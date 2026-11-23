@@ -1,55 +1,49 @@
-from colorama import Fore, Back, init
+from colorama import Fore, init
+
+import library
 from menu_compat import TerminalMenu
-import authentication as athu
 
 init(autoreset=True)
 
+
 def selectDirectory(UUID):
+    """List subjects from the unified catalog (cloud + local)."""
+    lib = library.for_user(UUID)
+    dirs = lib.subjects()
+    if not dirs:
+        print(f"{Fore.YELLOW}~ No files yet. Upload something first.")
+        return None
 
-    ###SELECTING THE FOLDER/SUBJECT
-
-    try:
-        response = athu.supabase.rpc("get_distinct_subjects", {"uid": UUID}).execute()
-        dirs = [row["subject"] for row in response.data]
-        dirs.insert(0,"GO BACK")
-    
-    except Exception as e:
-        print (f"Error while getting directories : {e}")
-
-    try:
-        dir_menu=TerminalMenu(dirs,title="SELECT A SUBJECT")
-        dir_selcted=dir_menu.show()
-        print(f"{Fore.BLUE}You Selected {dirs[dir_selcted]} ")
-
-    except Exception as e:
-        print(f"{Fore.RED}No subjects found (or failed to fetch directory list).")
-        return
-
-    if dir_selcted==0:
+    menu = TerminalMenu(["GO BACK"] + dirs, title="SELECT A SUBJECT")
+    selected = menu.show()
+    if selected is None or selected == 0:
         print(f"{Fore.LIGHTMAGENTA_EX}Retreating...")
-        return 
-    
-    else :
-        return dirs[dir_selcted]
+        return None
+
+    subject = dirs[selected - 1]
+    print(f"{Fore.BLUE}You selected {subject}")
+    return subject
 
 
-def selectFile(directory,UUID):
-    
-    try:
-        response = athu.supabase.table("USERS_DATA").select("*").eq("USER_ID", UUID).eq("subject",directory).execute()
-        data = response.data
+def selectFile(directory, UUID):
+    """List files for a subject, with a small badge for where copies live."""
+    lib = library.for_user(UUID)
+    documents = lib.list_documents(directory)
+    if not documents:
+        print(f"{Fore.YELLOW}~ No files in {directory}.")
+        return None
 
-        files_list=[]
+    labels = []
+    for document in documents:
+        doc_type = (document.get("doc_type") or "FILE").strip()
+        summary = (document.get("summary") or document.get("title") or "").strip()
+        places = " ".join(f"[{place}]" for place in document.get("places", []))
+        labels.append(f"{doc_type[:18].ljust(18)} │ {summary}  {places}")
 
-        for da in data:
-            files_list.append(f"{da['document_type'].strip().ljust(22)}│  {da['summary']}")
-        files_menu=TerminalMenu(files_list,title="Select The File")
-        file_selected = files_menu.show()
+    menu = TerminalMenu(labels, title="Select The File")
+    selected = menu.show()
+    if selected is None:
+        return None
 
-        print(f"You selected the file {files_list[file_selected]}...")
-
-        return data[file_selected]
-
-        
-    except Exception as e:
-        print(f"Error while accessing the file... : {e}")
+    print(f"{Fore.BLUE}You selected {labels[selected]}...")
+    return documents[selected]

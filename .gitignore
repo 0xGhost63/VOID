@@ -9,3 +9,8 @@ env/
 Thumbs.db
 todo.txt
 Test_Files/
+
+# Markdown documentation (except README)
+*.md
+!README.md
+!readme.md

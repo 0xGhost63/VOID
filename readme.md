@@ -13,6 +13,8 @@ VOID lets you upload your notes, PDFs, and assignments to the cloud, organize th
 - **Delete cleanly** — remove files from both storage and your records in one go, with a confirmation step so nothing goes missing by accident
 - **Account system** — your files are tied to your account and synced across every machine you run VOID on, so switching devices doesn't mean starting over
 - **Subject-based organization** — set up your enrolled subjects once (stored per-account in the cloud), and everything you upload gets sorted under them automatically
+- **Your storage, everywhere** — keep every file in VOID Cloud and optionally a local folder, Google Drive, and/or a GitHub repository, all mirrored automatically
+- **Local dashboard** — a dark, terminal-flavoured web UI at `http://127.0.0.1:8000` for browsing, uploading, syncing, and downloading without leaving the browser
 
 <br>
 
@@ -84,6 +86,30 @@ void
 
 anywhere. First run: sign in (or register), set subjects if the account is new, then use the main menu.
 
+### Local dashboard
+
+From a checkout of the repo, run:
+
+```bash
+./run
+```
+
+Then open **http://127.0.0.1:8000**. `./run` uses `.venv`, `venv`, or `python3`, and the port can be changed with `PORT=8080 ./run` or `./run --port 8080`.
+
+The dashboard shows every document, its subject, which places hold a copy, and the sync state. From there you can upload a file, download a copy, delete a document, and press **Sync Now** to reconcile every connected place. It reads the same local catalog as the terminal app, so changes made in either one show up in the other.
+
+### Storage places
+
+Open **Settings → Storage** in the terminal app. VOID Cloud is always on; you can add:
+
+- **Local folder** — a directory on this machine. Files are stored as `SUBJECT/filename`.
+- **Google Drive** — authorize once with Google's device flow. VOID creates a `VOID` folder and stores files as `SUBJECT/filename` inside it.
+- **GitHub** — a fine-grained personal access token with **Contents: Read and write** on one repository. Files go under `VOID/SUBJECT/filename`, and the rest of the repo is untouched.
+
+Once a place is connected, it is kept in sync automatically: new uploads are written to every place, existing files are mirrored on the next sync, and edits or deletes propagate both ways. If a place is offline, the change is queued and retried later. If two places hold different versions of the same file, VOID keeps both by saving a `(conflict …)` copy instead of overwriting either one.
+
+Disconnecting a place never deletes the files it already holds.
+
 ## Using VOID
 
 Once you're logged in, everything happens through the main menu. Use the arrow keys to move between options and Enter to select:
@@ -92,7 +118,7 @@ Once you're logged in, everything happens through the main menu. Use the arrow k
 - **Download File** — browse your uploaded files by subject, then either download the file directly or grab a shareable link for it
 - **Summarise File with AI** — select a file and VOID reads through it, figures out what kind of document it is, and hands you back a clean summary
 - **Delete File** — pick a file to remove permanently; you'll be asked to confirm before anything actually gets deleted
-- **Settings** — manage your enrolled subjects and other preferences
+- **Settings** — manage your enrolled subjects and connect storage places (local folder, Google Drive, GitHub)
 
 Every menu in VOID works the same way, so once you've navigated one, you already know how to use the rest of them.
 

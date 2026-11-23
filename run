@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Delegate to the web version runner in VOID-WEB/run
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/VOID-WEB/run" "$@"

@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="VOID — a local dashboard for your private file library.">
+  <meta name="theme-color" content="#04070b">
+  <title>VOID · Library dashboard</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to library</a>
+
+  <div class="ambient" aria-hidden="true">
+    <div class="ambient-glow ambient-glow-a"></div>
+    <div class="ambient-glow ambient-glow-b"></div>
+    <div class="ambient-grid"></div>
+    <div class="ambient-scan"></div>
+  </div>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/" aria-label="VOID dashboard home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><use href="#icon-void"></use></svg>
+        </span>
+        <span class="brand-name">VOID</span>
+        <span class="brand-suffix">/library</span>
+      </a>
+
+      <div class="topbar-meta">
+        <span class="node-state" title="Serving locally on this machine">
+          <span class="pulse-dot" aria-hidden="true"></span>
+          LOCAL NODE
+        </span>
+        <span class="local-note">Local dashboard · <span id="host">127.0.0.1:8000</span></span>
+      </div>
+
+      <button class="btn btn-ghost btn-refresh" id="refresh-btn" type="button" aria-label="Refresh library">
+        <svg class="icon" aria-hidden="true"><use href="#icon-refresh"></use></svg>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="nav-tabs" id="nav-tabs" role="tablist">
+    <button class="tab-btn active" data-tab="library" type="button" role="tab" aria-selected="true" aria-controls="tab-library">Library</button>
+    <button class="tab-btn" data-tab="settings" type="button" role="tab" aria-selected="false" aria-controls="tab-settings">⚙ Settings</button>
+  </div>
+
+  <main id="main" class="page">
+    <div id="tab-library" class="tab-panel">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="prompt">void@localhost:~$</span> status --all</p>
+        <h1 id="hero-title">Your library,<br><span class="gradient-text">without the noise.</span></h1>
+        <p class="hero-sub">
+          Browse, upload, sync and pull down every file in your VOID library
+          from one quiet little console.
+        </p>
+      </div>
+
+      <div class="hero-side">
+        <div class="identity" aria-live="polite">
+          <span class="identity-label">Active user</span>
+          <span class="identity-value" id="user-id">resolving…</span>
+        </div>
+        <div class="hero-readout" aria-hidden="true">
+          <span><i class="readout-dot"></i> CATALOG ONLINE</span>
+          <span class="readout-sep">/</span>
+          <span>OFFLINE-FIRST</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="Library overview">
+      <article class="stat-card" data-tone="cyan">
+        <div class="stat-top">
+          <span class="stat-label">Documents</span>
+          <span class="stat-glyph" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><use href="#icon-file"></use></svg>
+          </span>
+        </div>
+        <div class="stat-value" id="stat-documents">—</div>
+        <div class="stat-foot">indexed in your catalog</div>
+      </article>
+
+      <article class="stat-card" data-tone="blue">
+        <div class="stat-top">
+          <span class="stat-label">Subjects</span>
+          <span class="stat-glyph" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><use href="#icon-tag"></use></svg>
+          </span>
+        </div>
+        <div class="stat-value" id="stat-subjects">—</div>
+        <div class="stat-foot">distinct subject tags</div>
+      </article>
+
+      <article class="stat-card" data-tone="green">
+        <div class="stat-top">
+          <span class="stat-label">Places</span>
+          <span class="stat-glyph" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><use href="#icon-nodes"></use></svg>
+          </span>
+        </div>
+        <div class="stat-value" id="stat-places">—</div>
+        <div class="stat-foot">connected storage nodes</div>
+      </article>
+
+      <article class="stat-card" data-tone="amber" id="pending-card">
+        <div class="stat-top">
+          <span class="stat-label">Pending</span>
+          <span class="stat-glyph" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><use href="#icon-clock"></use></svg>
+          </span>
+        </div>
+        <div class="stat-value" id="stat-pending">—</div>
+        <div class="stat-foot">documents awaiting sync</div>
+      </article>
+    </section>
+
+    <div class="workspace">
+      <section class="panel library-panel" aria-labelledby="library-heading">
+        <div class="panel-head library-head">
+          <div>
+            <h2 id="library-heading">Library</h2>
+            <p class="panel-sub" id="library-count">Loading catalog…</p>
+          </div>
+          <span class="panel-code" aria-hidden="true">01 / DOCS</span>
+        </div>
+
+        <div class="toolbar" role="search">
+          <div class="search-field">
+            <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+            <label class="sr-only" for="search">Search documents by title or summary</label>
+            <input
+              id="search"
+              type="search"
+              placeholder="Search title or summary…"
+              autocomplete="off"
+              spellcheck="false"
+            >
+            <kbd class="search-kbd" aria-hidden="true">/</kbd>
+          </div>
+
+          <div class="select-field">
+            <label class="sr-only" for="subject-filter">Filter by subject</label>
+            <select id="subject-filter">
+              <option value="">All subjects</option>
+            </select>
+            <svg class="icon select-chevron" aria-hidden="true"><use href="#icon-chevron"></use></svg>
+          </div>
+
+          <div class="toolbar-actions">
+            <button class="btn btn-ghost" id="sync-btn" type="button">
+              <svg class="icon" aria-hidden="true"><use href="#icon-sync"></use></svg>
+              <span class="btn-text">Sync now</span>
+            </button>
+            <button class="btn btn-primary" id="upload-btn" type="button">
+              <svg class="icon" aria-hidden="true"><use href="#icon-upload"></use></svg>
+              <span class="btn-text">Upload</span>
+            </button>
+          </div>
+        </div>
+
+        <p class="sr-only" id="library-status" role="status" aria-live="polite"></p>
+
+        <div class="table-wrap" id="table-wrap">
+          <table class="doc-table" id="documents-table" aria-label="Documents in your library">
+            <thead>
+              <tr>
+                <th scope="col">Document</th>
+                <th scope="col">Subject</th>
+                <th scope="col">Places</th>
+                <th scope="col">State</th>
+                <th scope="col">Size</th>
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody id="documents-body"></tbody>
+          </table>
+        </div>
+
+        <div class="empty-state" id="empty-state" hidden>
+          <div class="empty-glyph" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><use href="#icon-void"></use></svg>
+          </div>
+          <h3 id="empty-title">The void is empty</h3>
+          <p id="empty-text">Upload your first file and it will show up here, sorted and ready.</p>
+          <button class="btn btn-primary" id="empty-action" type="button">
+            <svg class="icon" aria-hidden="true"><use href="#icon-upload"></use></svg>
+            <span id="empty-action-text">Upload a file</span>
+          </button>
+        </div>
+
+        <div class="panel-foot">
+          <span><span class="status-beep" aria-hidden="true"></span> Catalog read directly from <code>~/.void</code></span>
+          <span class="panel-foot-right">search + filter are instant</span>
+        </div>
+      </section>
+
+      <aside class="side-rail" aria-label="Storage places and node information">
+        <section class="panel places-panel" aria-labelledby="places-heading">
+          <div class="panel-head">
+            <div>
+              <h2 id="places-heading">Places</h2>
+              <p class="panel-sub">Where your files live</p>
+            </div>
+            <span class="panel-code" aria-hidden="true">02 / NODES</span>
+          </div>
+          <div class="places-list" id="places-list">
+            <div class="place-placeholder">
+              <span class="skeleton skeleton-dot"></span>
+              <span class="skeleton skeleton-line"></span>
+            </div>
+            <div class="place-placeholder">
+              <span class="skeleton skeleton-dot"></span>
+              <span class="skeleton skeleton-line"></span>
+            </div>
+          </div>
+          <p class="places-note">
+            Connected places appear above. Attach or remove storage places
+            from the terminal app.
+          </p>
+        </section>
+
+        <section class="panel node-panel" aria-labelledby="node-heading">
+          <div class="panel-head">
+            <div>
+              <h2 id="node-heading">Node</h2>
+              <p class="panel-sub">This dashboard session</p>
+            </div>
+            <span class="panel-code" aria-hidden="true">03 / SYS</span>
+          </div>
+
+          <dl class="node-list">
+            <div>
+              <dt>User</dt>
+              <dd id="node-user">—</dd>
+            </div>
+            <div>
+              <dt>Dashboard</dt>
+              <dd id="node-host">127.0.0.1:8000</dd>
+            </div>
+            <div>
+              <dt>Last sync</dt>
+              <dd id="last-sync">not this session</dd>
+            </div>
+            <div>
+              <dt>Pending</dt>
+              <dd id="node-pending">—</dd>
+            </div>
+          </dl>
+
+          <div class="signal-key" aria-label="State badge legend">
+            <span class="key-label">Signals</span>
+            <span class="badge state-in-sync"><span class="badge-dot"></span>In sync</span>
+            <span class="badge state-pending"><span class="badge-dot"></span>Pending</span>
+            <span class="badge state-conflict"><span class="badge-dot"></span>Conflict</span>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <div id="tab-settings" class="tab-panel" hidden>
+    <div class="settings-page">
+      <div class="settings-header">
+        <p class="eyebrow"><span class="prompt">void@localhost:~$</span> settings --storage</p>
+        <h2>Storage &amp; sync</h2>
+        <p class="settings-sub">Connect places to keep your files in sync. VOID Cloud is always on.</p>
+      </div>
+
+      <!-- Cloud (always on, read-only display) -->
+      <section class="settings-panel" id="settings-cloud">
+        <div class="settings-panel-head">
+          <div class="place-dot online" aria-hidden="true"></div>
+          <h3>VOID Cloud</h3>
+          <span class="settings-badge always-on">Always on</span>
+        </div>
+        <p class="settings-desc">Your primary store. Files sync here automatically. No configuration needed.</p>
+      </section>
+
+      <!-- Local folder -->
+      <section class="settings-panel" id="settings-local">
+        <div class="settings-panel-head">
+          <div class="place-dot" id="local-dot" aria-hidden="true"></div>
+          <h3>Local folder</h3>
+          <span class="settings-badge" id="local-badge">Not connected</span>
+        </div>
+        <p class="settings-desc">A folder on this machine. Files are stored as <code>SUBJECT/filename</code>.</p>
+        <form class="settings-form" id="local-form">
+          <div class="settings-field">
+            <label for="local-root">Folder path</label>
+            <input id="local-root" name="root" type="text" placeholder="~/VOID" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="settings-actions">
+            <button class="btn btn-primary" type="submit" id="local-save">Save</button>
+            <button class="btn btn-ghost btn-delete" type="button" id="local-remove">Remove</button>
+          </div>
+          <p class="settings-hint" id="local-hint"></p>
+        </form>
+      </section>
+
+      <!-- GitHub -->
+      <section class="settings-panel" id="settings-github">
+        <div class="settings-panel-head">
+          <div class="place-dot" id="github-dot" aria-hidden="true"></div>
+          <h3>GitHub</h3>
+          <span class="settings-badge" id="github-badge">Not connected</span>
+        </div>
+        <p class="settings-desc">A fine-grained PAT with <strong>Contents: Read and write</strong> on one repository. Files go under <code>VOID/SUBJECT/filename</code>.</p>
+        <form class="settings-form" id="github-form">
+          <div class="form-grid">
+            <div class="settings-field">
+              <label for="github-token">Personal access token</label>
+              <input id="github-token" name="token" type="password" placeholder="github_pat_..." autocomplete="off">
+            </div>
+            <div class="settings-field">
+              <label for="github-repo">Repository <span class="optional">owner/name</span></label>
+              <input id="github-repo" name="repo" type="text" placeholder="yourname/study-files" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="settings-field">
+              <label for="github-branch">Branch</label>
+              <input id="github-branch" name="branch" type="text" placeholder="main" autocomplete="off">
+            </div>
+            <div class="settings-field">
+              <label for="github-root">Folder in repo</label>
+              <input id="github-root" name="root" type="text" placeholder="VOID" autocomplete="off">
+            </div>
+          </div>
+          <div class="settings-actions">
+            <button class="btn btn-primary" type="submit" id="github-save">Save</button>
+            <button class="btn btn-ghost btn-delete" type="button" id="github-disconnect">Disconnect</button>
+          </div>
+          <p class="settings-hint" id="github-hint"></p>
+        </form>
+      </section>
+
+      <!-- Google Drive -->
+      <section class="settings-panel" id="settings-gdrive">
+        <div class="settings-panel-head">
+          <div class="place-dot" id="gdrive-dot" aria-hidden="true"></div>
+          <h3>Google Drive</h3>
+          <span class="settings-badge" id="gdrive-badge">Not connected</span>
+        </div>
+        <p class="settings-desc">Save your OAuth client credentials here. Then run <code>void</code> in the terminal and go to <strong>Settings → Storage → Connect Google Drive</strong> to complete the device-flow OAuth.</p>
+        <form class="settings-form" id="gdrive-form">
+          <div class="form-grid">
+            <div class="settings-field">
+              <label for="gdrive-client-id">OAuth client ID</label>
+              <input id="gdrive-client-id" name="client_id" type="text" placeholder="your-client-id.apps.googleusercontent.com" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="settings-field">
+              <label for="gdrive-client-secret">Client secret <span class="optional">optional</span></label>
+              <input id="gdrive-client-secret" name="client_secret" type="password" placeholder="GOCSPX-..." autocomplete="off">
+            </div>
+          </div>
+          <div class="settings-note" id="gdrive-oauth-note" hidden>
+            <span class="settings-note-icon">✓</span>
+            OAuth completed — refresh token is stored. Drive is linked.
+          </div>
+          <div class="settings-actions">
+            <button class="btn btn-primary" type="submit" id="gdrive-save">Save credentials</button>
+            <button class="btn btn-ghost btn-delete" type="button" id="gdrive-disconnect">Disconnect</button>
+          </div>
+          <p class="settings-hint" id="gdrive-hint"></p>
+        </form>
+      </section>
+    </div>
+  </div>
+  </main>
+
+  <footer class="footer">
+    <span class="footer-brand">VOID <span aria-hidden="true">▚</span> local dashboard</span>
+    <span class="footer-note">Your catalog stays on this machine. No telemetry, no trackers.</span>
+  </footer>
+
+  <!-- Upload modal ------------------------------------------------------->
+  <div class="modal" id="upload-modal" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <div
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="upload-title"
+      aria-describedby="upload-desc"
+      tabindex="-1"
+    >
+      <header class="modal-head">
+        <div>
+          <p class="eyebrow"><span class="prompt">void@localhost:~$</span> import --file</p>
+          <h2 id="upload-title">Add a file</h2>
+          <p id="upload-desc" class="modal-sub">Drop a file into the void. It is copied to every connected place.</p>
+        </div>
+        <button class="btn btn-icon btn-ghost" type="button" data-close-modal aria-label="Close upload dialog">
+          <svg class="icon" aria-hidden="true"><use href="#icon-close"></use></svg>
+        </button>
+      </header>
+
+      <form id="upload-form" class="upload-form">
+        <div class="drop-zone" id="drop-zone">
+          <input class="file-input" id="file-input" type="file" aria-label="Choose a file to upload">
+          <label class="drop-label" for="file-input">
+            <span class="drop-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><use href="#icon-upload"></use></svg>
+            </span>
+            <span class="drop-title">Choose a file <span class="drop-or">or drop it here</span></span>
+            <span class="drop-hint">Up to 100 MB · any file type</span>
+          </label>
+          <p class="file-name" id="file-name">No file selected</p>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="subject-input">Subject</label>
+            <input
+              id="subject-input"
+              name="subject"
+              type="text"
+              list="subject-options"
+              placeholder="e.g. PHYSICS"
+              autocomplete="off"
+              spellcheck="false"
+            >
+            <datalist id="subject-options"></datalist>
+            <p class="hint">New subjects are created automatically.</p>
+          </div>
+          <div class="field">
+            <label for="doc-type">Document type <span class="optional">optional</span></label>
+            <input
+              id="doc-type"
+              name="doc_type"
+              type="text"
+              placeholder="Notes, past paper, slides…"
+              autocomplete="off"
+            >
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="summary">Summary <span class="optional">optional</span></label>
+          <textarea
+            id="summary"
+            name="summary"
+            rows="3"
+            placeholder="What is this file about?"
+          ></textarea>
+        </div>
+
+        <div class="modal-error" id="modal-error" role="alert" hidden></div>
+
+        <section class="upload-results" id="upload-results" aria-live="polite" hidden>
+          <h3>Transfer report</h3>
+          <div class="result-list" id="upload-results-list"></div>
+          <div class="result-errors" id="upload-errors"></div>
+        </section>
+
+        <footer class="modal-actions">
+          <button class="btn btn-ghost" id="upload-cancel" type="button" data-close-modal>Cancel</button>
+          <button class="btn btn-primary" id="upload-submit" type="submit">
+            <svg class="icon" aria-hidden="true"><use href="#icon-upload"></use></svg>
+            <span class="btn-text">Send to library</span>
+          </button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- Inline icon sprite: no external assets or CDNs. -------------------->
+  <svg class="svg-sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="icon-void" viewBox="0 0 24 24">
+      <path d="M12 2.4 21 7v10l-9 4.6L3 17V7l9-4.6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M8.2 8.2 12 15.4l3.8-7.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24">
+      <path d="M20 11a8 8 0 0 0-14.3-4.9L4 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M20 20v-4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-upload" viewBox="0 0 24 24">
+      <path d="M12 16V4m0 0-4 4m4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-sync" viewBox="0 0 24 24">
+      <path d="M4 9a8 8 0 0 1 13.5-3.5L20 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M20 4v4h-4M20 15a8 8 0 0 1-13.5 3.5L4 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4 20v-4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-download" viewBox="0 0 24 24">
+      <path d="M12 4v12m0 0-4-4m4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24">
+      <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <path d="m16 16 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24">
+      <path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-file" viewBox="0 0 24 24">
+      <path d="M6 3h8l5 5v13H6V3Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M9 13h7M9 17h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-tag" viewBox="0 0 24 24">
+      <path d="M4 4h7l9 9-7 7-9-9V4Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <circle cx="8.5" cy="8.5" r="1.4" fill="currentColor"/>
+    </symbol>
+    <symbol id="icon-nodes" viewBox="0 0 24 24">
+      <circle cx="6" cy="6" r="2.3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <circle cx="18" cy="9" r="2.3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <circle cx="9" cy="18" r="2.3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <path d="m8 7 7.5 1.5M7.5 8 8.6 15.7M17 11l-6.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-clock" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-chevron" viewBox="0 0 24 24">
+      <path d="m7 10 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </svg>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

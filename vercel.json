@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "VOID-WEB/main.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "VOID-WEB/static/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "VOID-WEB/main.py"
+    }
+  ]
+}

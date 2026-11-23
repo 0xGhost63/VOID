@@ -9,10 +9,12 @@ from menu_compat import TerminalMenu
 import authentication as athu
 import dirNavigator
 import os
+import shutil
 import sys
 import socket
 from configuration import configuration_check
 import settings
+import library
 
 init(autoreset=True)
 
@@ -100,9 +102,13 @@ if not configs:
   print(f"{Fore.RED}Failed to set-up the configurations...quitting :(")
   sys.exit()
 
+lib = library.for_user(UUID)
+print(f"{Fore.LIGHTMAGENTA_EX}Syncing your places...")
+lib.sync(quiet=True)
+
 import upload_file
 import selectSupabaseFiles
-from chat import chat_with_file
+from chat import chat_with_document
 
 
 
@@ -132,13 +138,40 @@ while(True):
     if file is None:
         continue
 
-    storage_path=file["storage_path"]
-
     options=["DOWNLOAD THE FILE DIRECTLY","GET A URL OF THE FILE"]
     options_menu=TerminalMenu(options,title="SELECT...")
     selected=options_menu.show()
     if selected is None:
         continue
+
+    if selected == 0:
+        try:
+            source_path = lib.open_document(file["doc_id"])
+            downloads = os.path.join(os.path.expanduser("~"), "Downloads")
+            os.makedirs(downloads, exist_ok=True)
+            destination = os.path.join(downloads, os.path.basename(source_path))
+            if os.path.exists(destination):
+                stem, extension = os.path.splitext(os.path.basename(source_path))
+                destination = os.path.join(
+                    downloads,
+                    f"{stem} ({datetime.now().strftime('%Y-%m-%d %H%M%S')}){extension}",
+                )
+            shutil.copy2(source_path, destination)
+            print(f"{Fore.GREEN}~ Saved to {destination}")
+        except Exception as exc:
+            print(f"{Fore.RED}~ Download failed: {exc}")
+
+    else:
+        url = lib.share_link(file["doc_id"])
+        if not url:
+            print(f"{Fore.YELLOW}~ This file has no cloud copy to share.")
+        else:
+            print(f"{Fore.GREEN}~ {url}")
+            try:
+                pyperclip.copy(url)
+                print(f"{Fore.CYAN}~ Link copied to clipboard.")
+            except Exception:
+                pass
   
   ### CHATING WITH THE AI REGARDING A FILE ! 
 
@@ -150,7 +183,7 @@ while(True):
     if file is None:
         continue
 
-    chat_with_file(file["storage_path"],athu=athu)
+    chat_with_document(file["doc_id"], athu=athu)
 
 
   ## deleting a file !
@@ -162,35 +195,23 @@ while(True):
 
     if file is None:
         continue
-    
-    storage_path=file["storage_path"]
-    file_name=storage_path.split("/")
-    file_name=file_name[2]
 
-    print(f"{Fore.RED}{Back.BLACK}Are you sure to delete the : {file_name}")
+    file_name = file.get("title") or file.get("summary") or "this file"
+    places = ", ".join(file.get("places", [])) or "no places"
+    print(f"{Fore.RED}{Back.BLACK}Are you sure to delete : {file_name} ({places}) ?")
     yes_no_menu = TerminalMenu(["No", "Yes"], title="ARE YOU COMPLETELY SURE ?")
 
-    if yes_no_menu.show() == 0:
+    if yes_no_menu.show() != 1:
       print(f"{Fore.BLUE}Backing off :)")
       continue
 
-    if yes_no_menu.show() == 1:
-       
-      table_deleted = False
-
-      try:
-          athu.supabase.table("USERS_DATA").delete().eq("storage_path", storage_path).eq("USER_ID", UUID).execute()
-          table_deleted = True
-
-          athu.supabase.storage.from_("VOID_FILES").remove([storage_path])
-          print(f"{Fore.GREEN}~ '{file_name}' deleted from both database and storage.")
-      except httpx.ConnectError:
-          print(f"{Fore.RED}~ Connection lost mid-delete. Check your internet and try again :(")
-      except Exception as e:
-          print(f"{Fore.RED}~ Delete failed: {e}")
-
-          if table_deleted:
-              print(f"{Fore.YELLOW}~ Warning: DB record removed but file may still exist in storage. Manual cleanup may be needed.")
+    errors = lib.delete_document(file["doc_id"])
+    if errors:
+        print(f"{Fore.YELLOW}~ Deleted, with warnings:")
+        for error in errors:
+            print(f"{Fore.YELLOW}  - {error}")
+    else:
+        print(f"{Fore.GREEN}~ '{file_name}' deleted from every connected place.")
 
 
   # $$$$$$$$$ SETTINGS $$$$$$$$
